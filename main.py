@@ -15,4 +15,4 @@ lexer = Lexer(file_contents)
 tokens = lexer.tokenize()
 
 for token in tokens:
-    print(f"${token.type} ${token.value} ${token.line}")
+    print(f"{token.type} {token.value} {token.line}")

@@ -1,30 +1,33 @@
-from enum import Enum
+from enum import Enum, auto
 from dataclasses import dataclass
 
 class TokenType(Enum):
-    KEYWORD = 1
-    IDENT = 2
-    INT_LIT = 3
-    FLOAT_LIT = 4
-    STRING_LIT = 5
-    PLUS = 6
-    MINUS = 7
-    STAR = 8
-    SLASH = 9
-    EQ = 10
-    NEQ = 11
-    LT = 12
-    GT = 13
-    ASSIGN = 14
-    LPAREN = 15
-    RPAREN = 16
-    LBRACE = 17
-    RBRACE = 18
-    SEMI = 19
-    COMMA = 20
-    EOF = 21
+    KEYWORD    = auto()
+    IDENT      = auto()
+    INT_LIT    = auto()
+    FLOAT_LIT  = auto()
+    STRING_LIT = auto()
+    CHAR_LIT   = auto()
+    PLUS       = auto()
+    MINUS      = auto()
+    STAR       = auto()
+    SLASH      = auto()
+    EQ         = auto()
+    NEQ        = auto()
+    LT         = auto()
+    GT         = auto()
+    LTE        = auto()
+    GTE        = auto()
+    ASSIGN     = auto()
+    LPAREN     = auto()
+    RPAREN     = auto()
+    LBRACE     = auto()
+    RBRACE     = auto()
+    SEMI       = auto()
+    COMMA      = auto()
+    EOF        = auto()
 
-KEYWORDS = {'if', 'else', 'while', 'return', 'int', 'float', 'string'}
+KEYWORDS = {'if', 'else', 'while', 'return', 'int', 'float', 'char'}
 
 @dataclass
 class Token:
@@ -52,7 +55,7 @@ class Lexer:
         while self.pos < len(self.src) and self.src[self.pos].isspace():
             if self.src[self.pos] == '\n':
                 self.line += 1
-            self.pos += 1
+            self.pos +=
 
     def match(self, expected):
         if self.pos < len(self.src) and self.src[self.pos] == expected:
@@ -69,11 +72,29 @@ class Lexer:
                 result.append('\\' + self.advance())
             else:
                 result.append(ch)
-        if self.pos > len(self.src):
+        if self.pos >= len(self.src):
             raise SyntaxError(f"Unterminated string on line {self.line}")
 
         self.pos += 1
         return ''.join(result)
+
+    def read_char(self):
+        if self.pos >= len(self.src):
+            raise SyntaxError(f"Unterminated char literal on line {self.line}")
+
+        ch = self.advance()
+
+        if ch == '\\':
+            if self.peek() not in ('\'', '\\', 'n', 't', 'r', '0'):
+                raise SyntaxError(f"Unknown escape in char literal on line {self.line}")
+            ch = '\\' + self.advance()
+
+        if self.pos >= len(self.src) or self.src[self.pos] != "'":
+            raise SyntaxError(f"Char literal not closed on line {self.line}")
+
+
+        self.pos += 1
+        return ch
 
     def next_token(self):
         self.skip_whitespace()
@@ -107,17 +128,21 @@ class Lexer:
 
         if ch == '<':
             if self.match('='):
-                return Token(TokenType.EQ, '<=', line)
+                return Token(TokenType.LTE, '<=', line)
             return Token(TokenType.LT,      '<', line)
 
         if ch == '>':
             if self.match('='):
-                return Token(TokenType.EQ, '>=', line)
+                return Token(TokenType.GTE, '>=', line)
             return Token(TokenType.GT,      '>', line)
 
         if ch == '"':
             value = self.read_string()
             return Token(TokenType.STRING_LIT, value, line)
+
+        if ch == "'":
+            value = self.read_char()
+            return Token(TokenType.CHAR_LIT, value, line)
 
         if ch.isdigit():
             digits = [ch]
