@@ -55,7 +55,7 @@ class Lexer:
         while self.pos < len(self.src) and self.src[self.pos].isspace():
             if self.src[self.pos] == '\n':
                 self.line += 1
-            self.pos +=
+            self.pos += 1
 
     def match(self, expected):
         if self.pos < len(self.src) and self.src[self.pos] == expected:
