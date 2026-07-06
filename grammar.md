@@ -1,6 +1,6 @@
 # C Grammar Reference
 
-This file defines the grammar of the C subset your compiler supports.
+This file defines the grammar of the C subset this compiler supports.
 It uses **BNF-style notation** — read it top to bottom, each rule defines what something is made of.
 
 ```
@@ -275,7 +275,7 @@ To keep scope small, the following are intentionally left out:
 
 ## Full Example
 
-A complete program your compiler can handle:
+A complete program this compiler can handle:
 
 ```c
 int fib(int n) {
