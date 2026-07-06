@@ -1,4 +1,10 @@
+int fib(int n) {
+  if (n < 2) {
+    return n;
+  }
+  return fib(n - 1) + fib(n - 2);
+}
+
 int main() {
-  char abd = '1';
-  return 0;
+  return fib(10);
 }
