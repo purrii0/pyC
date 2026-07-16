@@ -41,7 +41,7 @@ class Lexer:
         self.src    = src
         self.line   = 1
         self.pos    = 0
-
+        
     def peek(self):
         if self.pos < len(self.src):
             return self.src[self.pos]

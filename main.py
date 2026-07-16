@@ -1,5 +1,6 @@
 import sys
 from lexer import Lexer
+from parser import Parser
 
 if len(sys.argv) <= 1:
     print("Usage: pyC <filename>.c")
@@ -12,3 +13,5 @@ with open(filename, 'r') as file:
 
 lexer = Lexer(file_contents)
 tokens = lexer.tokenize()
+parser = Parser(tokens)
+parser.parse_program()
