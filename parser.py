@@ -1,13 +1,6 @@
-import random
 from dataclasses import dataclass
-from mimetypes import add_type
-from multiprocessing import context
-from time import sleep
+from lexer import TokenType
 from typing import Any
-from unittest import expectedFailure
-from urllib import parse
-
-from lexer import TokenType, Token
 
 @dataclass
 class Program:
@@ -145,8 +138,8 @@ class Parser:
                 return self.parse_function_call()
             else:
                 raise ParseError("unexpected token after identifier")
-        else:
-            raise ParseError(f"unexpected token {tok.type} at start of statement")
+        raise ParseError(f"unexpected token {tok.type} at start of statement")
+
     def parse_var_decl(self):
         token_type = self.expect(TokenType.KEYWORD)
         token_name = self.expect(TokenType.IDENT)
@@ -159,22 +152,96 @@ class Parser:
         self.expect(TokenType.SEMI)
         return VarDecl(token_type.val, token_name.val, init)
     def parse_function_call(self):
-        pass
+        token_name = self.expect(TokenType.IDENT)
+        call = self.parse_function_call_from(token_name)
+        self.expect(TokenType.SEMI)
+        return call
+    def parse_function_call_from(self, token):
+        self.expect(TokenType.LPAREN)
+        args = []
+        if self.peek().type !=  TokenType.RPAREN:
+            args.append(self.parse_expression())
+            while self.peek().type == TokenType.COMMA:
+                self.advance()
+                args.append(self.parse_expression())
+        self.expect(TokenType.RPAREN)
+        return FuncCall(token.val, args)
     def parse_assign(self):
-        pass
+        token_name = self.expect(TokenType.IDENT)
+        self.expect(TokenType.ASSIGN)
+        value = self.parse_expression()
+        self.expect(TokenType.SEMI)
+        return Assign(token_name.val, value)
     def parse_if(self):
-        pass
+        self.expect(TokenType.KEYWORD)
+        self.expect(TokenType.LPAREN)
+        condition = self.parse_expression()
+        self.expect(TokenType.RPAREN)
+        then_body = self.parse_block()
+
+        else_body = []
+        if self.peek().type == TokenType.KEYWORD and self.peek().val == 'else':
+            self.advance()
+            else_body = self.parse_block()
+        return If(condition, then_body, else_body)
     def parse_while(self):
-        pass
+        self.expect(TokenType.KEYWORD)
+        self.expect(TokenType.LPAREN)
+        condition = self.parse_expression()
+        self.expect(TokenType.RPAREN)
+        body = self.parse_block()
+        return While(condition, body)
     def parse_return(self):
-        pass
+        self.expect(TokenType.KEYWORD)
+        expr = self.parse_expression()
+        self.expect(TokenType.SEMI)
+        return Return(expr)
     def parse_expression(self):
-        pass
+        left = self.parse_additive()
+        while self.peek().type in (TokenType.EQ, TokenType.NQ, TokenType.LT, TokenType.GT, TokenType.LTE, TokenType.GTE):
+            op = self.advance()
+            right = self.parse_additive()
+            left = BinaryOp(left, op.val, right)
+        return left
     def parse_additive(self):
-        pass
+        left = self.parse_term()
+        while self.peek().type in (TokenType.PLUS, TokenType.MINUS):
+            op = self.advance()
+            right = self.parse_term()
+            left = BinaryOp(left, op.val, right)
+        return left
     def parse_term(self):
-        pass
+        left = self.parse_unary()
+        while self.peek().type in (TokenType.MULTIPLY, TokenType.DIVIDE):
+            op = self.advance()
+            right = self.parse_unary()
+            left = BinaryOp(left, op.val, right)
+        return left
     def parse_unary(self):
-        pass
+        if self.peek().type == TokenType.MINUS:
+            op = self.advance()
+            expr = self.parse_unary()
+            return UnaryOp(op.val, expr)
+        return self.parse_primary()
     def parse_primary(self):
-        pass
+        tok = self.peek()
+        if tok.type == TokenType.INT_LIT:
+            self.advance()
+            return IntLiteral(tok.val)
+        if tok.type == TokenType.FLOAT_LIT:
+            self.advance()
+            return FloatLiteral(tok.val)
+        if tok.type == TokenType.CHAR_LIT:
+            self.advance()
+            return CharLiteral(tok.val)
+        if tok.type == TokenType.IDENT:
+            self.advance()
+            if self.peek().type == TokenType.LPAREN:
+                return self.parse_function_call_from(tok)
+            return Identifier(tok.val)
+        if tok.type == TokenType.LPAREN:
+            self.advance()
+            expr = self.parse_expression()
+            self.expect(TokenType.RPAREN)
+            return expr
+        raise ParseError(f"unexpected token {tok.type} in expression")

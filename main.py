@@ -13,5 +13,5 @@ with open(filename, 'r') as file:
 
 lexer = Lexer(file_contents)
 tokens = lexer.tokenize()
-parser = Parser(tokens)
-parser.parse_program()
+tree = Parser(tokens).parse_program()
+print(tree)
