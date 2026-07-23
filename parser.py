@@ -52,6 +52,10 @@ class FloatLiteral:
 
 
 @dataclass
+class StringLiteral:
+    value: Any
+
+@dataclass
 class Identifier:
     name: str
 
@@ -266,6 +270,10 @@ class Parser:
             op = self.advance()
             expr = self.parse_unary()
             return UnaryOp(op.val, expr)
+        elif self.peek().type == TokenType.AMP:
+            op = self.advance()
+            expr = self.parse_unary()
+            return UnaryOp(op.val, expr)
         return self.parse_primary()
 
     def parse_primary(self):
@@ -279,6 +287,9 @@ class Parser:
         if tok.type == TokenType.CHAR_LIT:
             self.advance()
             return CharLiteral(tok.val)
+        if tok.type == TokenType.STRING_LIT:
+            self.advance()
+            return StringLiteral(tok.val)
         if tok.type == TokenType.IDENT:
             self.advance()
             if self.peek().type == TokenType.LPAREN:

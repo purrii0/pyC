@@ -26,6 +26,8 @@ class TokenType(Enum):
     GTE = auto()
     LTE = auto()
     EOF = auto()
+    AMP = auto()
+    STRING_LIT = auto()
 
 
 @dataclass()
@@ -71,6 +73,7 @@ class Lexer:
         if ch == '+': return Token(TokenType.PLUS, '+', self.line)
         if ch == '-': return Token(TokenType.MINUS, '-', self.line)
         if ch == '*': return Token(TokenType.MULTIPLY, '*', self.line)
+        if ch == '&': return Token(TokenType.AMP, '&', self.line)
         if ch == '/':
             if self.peek() == '*':
                 self.skip_block_comment()
@@ -88,6 +91,10 @@ class Lexer:
             return self.read_number(ch)
         if ch.isalpha() or ch == '_':
             return self.read_ident(ch)
+        if ch == "'":
+            return self.read_char(ch)
+        if ch == '"':
+            return self.read_string(ch)
         raise LexError(f"Unknown character '{ch}' at line {self.line}")
 
     def read_two_char(self, ch):
@@ -130,6 +137,44 @@ class Lexer:
                 num += self.advance()
             return Token(TokenType.FLOAT_LIT, num, self.line)
         return Token(TokenType.INT_LIT, num, self.line)
+
+    def decode_escape(self, esc):
+        if esc == 'n':  return '\n'
+        if esc == 't':  return '\t'
+        if esc == '\\': return '\\'
+        if esc == "'":  return "'"
+        if esc == '0':  return '\0'
+        raise LexError(f"unknown escape sequence \\{esc}")
+
+    def read_char(self, first_ch) :
+        if self.peek() == '\\':
+            self.advance()
+            esc = self.advance()
+            char = self.decode_escape(esc)
+        else:
+            char = self.advance()
+        if self.peek() != "'":
+            raise LexError("char literal must contain exactly one character")
+        self.advance()
+        return Token(TokenType.CHAR_LIT, char, self.line)
+
+    def read_string(self, first_ch):
+        chars = []
+
+        while self.peek() != '"':
+            if self.peek() == '':
+                raise LexError("unterminated string literal")
+
+            if self.peek() == '\\':
+                self.advance()
+                esc = self.advance()
+                chars.append(self.decode_escape(esc))
+            else:
+                chars.append(self.advance())
+
+        self.advance()
+        return Token(TokenType.STRING_LIT, ''.join(chars), self.line)
+
 
     def skip_block_comment(self):
         self.advance()
