@@ -1,6 +1,6 @@
 from parser import (
     Program, BinaryOp, UnaryOp, If, FuncDef, IntLiteral, CharLiteral,
-    FloatLiteral, Identifier, Assign, Return, While, FuncCall, VarDecl
+    FloatLiteral, Identifier, Assign, Return, While, FuncCall, VarDecl, StringLiteral
 )
 
 
@@ -20,12 +20,16 @@ instructions = {
     "!=": "icmp ne"
 }
 
+VARIADEC_FUNCS = {'printf', 'scanf'}
 
 class CodeGen:
     def __init__(self):
         self.lines = []
         self.reg_count = 0
         self.symtab = {}
+        self.globals = []
+        self.global_count = 0
+        self.declared_externs = set()
 
     def new_reg(self):
         self.reg_count += 1
@@ -37,9 +41,45 @@ class CodeGen:
     def emit_header(self, line):
         self.lines.append(line)
 
+    def escape_c_string(self, s):
+        out = []
+        for ch in s:
+            code = ord(ch)
+            if ch in ('"', '\\'):
+                out.append(f"\\{code:02X}")
+            elif 32 <= code < 127:
+                out.append(ch)
+            else:
+                out.append(f"\\{code:02X}")
+        out.append(f"\\00")
+        return "".join(out), len(s.encode("utf-8")) + 1
+
+    def add_string_global(self, s):
+        text, length = self.escape_c_string(s)
+        name = f"@.str{self.global_count}"
+        self.global_count += 1
+        self.globals.append(f'{name} = private unnamed_addr constant [{length} x i8] c"{text}", align 1')
+        return name, length
+
+    def infer_arg_type(self, node):
+        if isinstance(node, StringLiteral):
+            return "ptr"
+        if isinstance(node, UnaryOp) and getattr(node, "op", None) == "&":
+            return "ptr"
+        if isinstance(node, FloatLiteral):
+            return "double"
+        return "i32"
+
     def gen_expr(self, node):
         if isinstance(node, IntLiteral):
             return node.value
+        elif isinstance(node, FloatLiteral):
+            return node.value
+        elif isinstance(node, CharLiteral):
+            return ord(node.value)
+        elif isinstance(node, StringLiteral):
+            name, _ = self.add_string_global(node.value)
+            return name
         elif isinstance(node, Identifier):
             reg_ptr = self.symtab[node.name]
             reg = self.new_reg()
@@ -53,6 +93,11 @@ class CodeGen:
             self.emit(f"{reg} = {instr} i32 {left}, {right}")
             return reg
         elif isinstance(node, UnaryOp):
+            if getattr(node, "op", None) == "&":
+                if isinstance(node.expr, Identifier):
+                    return self.symtab[node.expr.name]
+                raise CodeGenError("'&' only supported on simple variables")
+
             value = self.gen_expr(node.expr)
             reg = self.new_reg()
             self.emit(f"{reg} = sub i32 0, {value}")
@@ -103,6 +148,12 @@ class CodeGen:
         for stmt in node.body:
             self.gen_stmt(stmt)
 
+        if not (node.body and isinstance(node.body[-1], Return)):
+            if self.current_ret_type == 'void':
+                self.emit("ret void")
+            else:
+                self.emit("ret i32 0")
+
         self.emit_header("}")
         return '\n'.join(self.lines)
 
@@ -149,10 +200,33 @@ class CodeGen:
         self.emit_header(f"{end_label}:")
 
     def gen_func_call(self, node):
-        args_vals = []
-        for arg in node.args:
-            args_vals.append(self.gen_expr(arg))
-        args_text = ', '.join(f"i32 {v}" for v in args_vals)
+        args_types = [self.infer_arg_type(arg) for arg in node.args]
+        args_vals = [self.gen_expr(arg) for arg in node.args]
+        args_text = ', '.join(f"{t} {v}" for t, v in zip(args_types, args_vals))
+
         reg = self.new_reg()
-        self.emit(f"{reg} = call i32 @{node.name}({args_text})")
+        if node.name in VARIADEC_FUNCS:
+            self.declared_externs.add(node.name)
+            self.emit(f"{reg} = call i32 (ptr, ...) @{node.name}({args_text})")
+        else:
+            self.emit(f"{reg} = call i32 @{node.name}({args_text})")
         return reg
+
+    def emit_preamble(self):
+        lines = []
+        for name in sorted(self.declared_externs):
+            lines.append(f"declare i32 @{name}(ptr, ...)")
+        lines.extend(self.globals)
+        return '\n'.join(lines)
+
+    def codegen(self, tree):
+        func_irs = []
+        for func in tree.function:
+            func_irs.append(self.gen_function(func))
+
+        preamble = self.emit_preamble()
+        body = '\n\n'.join(func_irs)
+
+        if preamble:
+            body = preamble + "\n\n" + body
+        return body
