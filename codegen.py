@@ -109,41 +109,44 @@ class CodeGen:
     def gen_if(self, node):
         cond_reg = self.gen_expr(node.condition)
 
-        then_label = self.new_reg()
-        else_label = self.new_reg()
-        end_label  = self.new_reg()
+        then_label = f"then{self.new_reg()[1:]}"
+        else_label = f"else{self.new_reg()[1:]}"
+        end_label  = f"end{self.new_reg()[1:]}"
 
-        self.emit(f"br i1 {cond_reg}, label {then_label}, label {else_label}")
-        self.emit_header(f"{then_label.replace("%", '').strip()}:")
+        self.emit(f"br i1 {cond_reg}, label %{then_label}, label %{else_label}")
+        self.emit_header(f"{then_label}:")
 
         for stmt in node.then_body:
             self.gen_stmt(stmt)
-        self.emit(f"br label {end_label}")
+        if not (node.then_body and isinstance(node.then_body[-1], Return)):
+            self.emit(f"br label %{end_label}")
 
-        self.emit_header(f"{else_label.replace("%", '').strip()}:")
+        self.emit_header(f"{else_label}:")
         for stmt in node.else_body:
             self.gen_stmt(stmt)
-        self.emit(f"br label {end_label}")
+        if not (node.else_body and isinstance(node.else_body[-1], Return)):
+            self.emit(f"br label %{end_label}")
 
-        self.emit_header(f"{end_label.replace("%", '').strip()}:")
+        self.emit_header(f"{end_label}:")
 
     def gen_while(self, node):
-        body_label = self.new_reg()
-        cond_label = self.new_reg()
-        end_label = self.new_reg()
+        body_label = f"word{self.new_reg()[1:]}"
+        cond_label = f"word{self.new_reg()[1:]}"
+        end_label = f"word{self.new_reg()[1:]}"
 
-        self.emit(f"br label {cond_label}")
+        self.emit(f"br label %{cond_label}")
 
-        self.emit_header(f"{cond_label.replace("%", '').strip()}:")
+        self.emit_header(f"{cond_label}:")
         cond_reg = self.gen_expr(node.condition)
-        self.emit(f"br i1 {cond_reg}, label {body_label}, label {end_label}")
+        self.emit(f"br i1 {cond_reg}, label %{body_label}, label %{end_label}")
 
-        self.emit_header(f"{body_label.replace("%", '').strip()}:")
+        self.emit_header(f"{body_label}:")
         for stmt in node.body:
             self.gen_stmt(stmt)
-        self.emit(f"br label {cond_label}")
+        if not (node.body and isinstance(node.body[-1], Return)):
+            self.emit(f"br label %{cond_label}")
 
-        self.emit_header(f"{end_label.replace("%", '').strip()}:")
+        self.emit_header(f"{end_label}:")
 
     def gen_func_call(self, node):
         args_vals = []
