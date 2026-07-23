@@ -118,6 +118,7 @@ class Parser:
         while self.peek().type != TokenType.RBRACE:
             stmt = self.parse_statement()
             stmts.append(stmt)
+        self.expect(TokenType.RBRACE)
         return stmts
 
     def parse_statement(self):
