@@ -1,47 +1,53 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+
 class TokenType(Enum):
-    INT_LIT     = auto()
-    FLOAT_LIT   = auto()
-    CHAR_LIT    = auto()
-    KEYWORD     = auto()
-    IDENT       = auto()
-    PLUS        = auto()
-    MINUS       = auto()
-    MULTIPLY    = auto()
-    DIVIDE      = auto()
-    GT          = auto()
-    LT          = auto()
-    EQ          = auto()
-    NQ          = auto()
-    LPAREN      = auto()
-    RPAREN      = auto()
-    LBRACE      = auto()
-    RBRACE      = auto()
-    COMMA       = auto()
-    SEMI        = auto()
-    ASSIGN      = auto()
-    GTE         = auto()
-    LTE         = auto()
-    EOF         = auto()
+    INT_LIT = auto()
+    FLOAT_LIT = auto()
+    CHAR_LIT = auto()
+    KEYWORD = auto()
+    IDENT = auto()
+    PLUS = auto()
+    MINUS = auto()
+    MULTIPLY = auto()
+    DIVIDE = auto()
+    GT = auto()
+    LT = auto()
+    EQ = auto()
+    NQ = auto()
+    LPAREN = auto()
+    RPAREN = auto()
+    LBRACE = auto()
+    RBRACE = auto()
+    COMMA = auto()
+    SEMI = auto()
+    ASSIGN = auto()
+    GTE = auto()
+    LTE = auto()
+    EOF = auto()
+
 
 @dataclass()
 class Token:
-    type:   TokenType
-    val:    str
-    line:   int
+    type: TokenType
+    val: str
+    line: int
+
 
 keywords = {'char', 'int', 'void', 'float', 'if', 'else', 'while', 'return'}
 
+
 class LexError(Exception):
     pass
+
+
 class Lexer:
     def __init__(self, src):
-        self.src    = src
-        self.line   = 1
-        self.pos    = 0
-        
+        self.src = src
+        self.line = 1
+        self.pos = 0
+
     def peek(self):
         if self.pos < len(self.src):
             return self.src[self.pos]
@@ -62,21 +68,20 @@ class Lexer:
     def next_token(self):
         self.skip_whitespaces()
         ch = self.advance()
-
-        if ch == '+': return Token(TokenType.PLUS,      '+', self.line)
-        if ch == '-': return Token(TokenType.MINUS,     '-', self.line)
-        if ch == '*': return Token(TokenType.MULTIPLY,  '*', self.line)
+        if ch == '+': return Token(TokenType.PLUS, '+', self.line)
+        if ch == '-': return Token(TokenType.MINUS, '-', self.line)
+        if ch == '*': return Token(TokenType.MULTIPLY, '*', self.line)
         if ch == '/':
             if self.peek() == '*':
                 self.skip_block_comment()
                 return None
-            return Token(TokenType.DIVIDE,    '/', self.line)
-        if ch == ';': return Token(TokenType.SEMI,      ';', self.line)
-        if ch == ',': return Token(TokenType.COMMA,     ',', self.line)
-        if ch == '(': return Token(TokenType.LPAREN,    '(', self.line)
-        if ch == ')': return Token(TokenType.RPAREN,    ')', self.line)
-        if ch == '{': return Token(TokenType.LBRACE,    '{', self.line)
-        if ch == '}': return Token(TokenType.RBRACE,    '}', self.line)
+            return Token(TokenType.DIVIDE, '/', self.line)
+        if ch == ';': return Token(TokenType.SEMI, ';', self.line)
+        if ch == ',': return Token(TokenType.COMMA, ',', self.line)
+        if ch == '(': return Token(TokenType.LPAREN, '(', self.line)
+        if ch == ')': return Token(TokenType.RPAREN, ')', self.line)
+        if ch == '{': return Token(TokenType.LBRACE, '{', self.line)
+        if ch == '}': return Token(TokenType.RBRACE, '}', self.line)
         if ch in ('=', '!', '<', '>'):
             return self.read_two_char(ch)
         if ch.isdigit():

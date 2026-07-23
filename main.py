@@ -1,6 +1,7 @@
 import sys
 from lexer import Lexer
 from parser import Parser
+from codegen import CodeGen
 
 if len(sys.argv) <= 1:
     print("Usage: pyC <filename>.c")
@@ -14,4 +15,6 @@ with open(filename, 'r') as file:
 lexer = Lexer(file_contents)
 tokens = lexer.tokenize()
 tree = Parser(tokens).parse_program()
-print(tree)
+cg = CodeGen()
+for func in tree.function:
+    print(cg.gen_function(func))
